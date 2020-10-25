@@ -1,6 +1,9 @@
-﻿Using Namespace Raleose.Network.Checker
-$networkChecker = [NetworkChecker]::new("188.32.15.", 1, 255)
-$networkChecker.Check()
+﻿Class Test{
+    static Main(){
+        $networkChecker = [NetworkChecker]::new("188.32.15.", 1, 255)
+        $networkChecker.Check()
+    }
+}
 
 Class NetworkChecker{
     
@@ -8,12 +11,11 @@ Class NetworkChecker{
         $this.networkPrefix = $networkPrefix
         $this.minInclusiveByte = $minInclusiveByte
         $this.maxInclusiveByte = $maxInclusiveByte
+        $this.ipList = @()
+        $this.checker = [CheckerICMP]::new(1, 500)
     }
     
-    #количество запросов на один адрес
-    [int] $requestsQuantity = 1
-    #тайм-аут на проверку одного адреса
-    [int] $waitTimeoutMillis = 500
+    
     #префикс сети
     [string] $networkPrefix
     #начальное значение четвертого байта (включающее)
@@ -21,11 +23,13 @@ Class NetworkChecker{
     #конечное значение четвертого байта (включающее)
     [int] $maxInclusiveByte
     #сюда будут сохранены объекты IpInfo
-    [IpInfo[]] $ipList = @()
+    [IpInfo[]] $ipList
+    #Проверка по Эхо-запросу
+    [CheckerICMP] $checker
 
     Check(){
         $adressesCount = $this.maxInclusiveByte - $this.minInclusiveByte - 2
-        $maxTimeForScan = $adressesCount * $this.waitTimeoutMillis / 1000
+        $maxTimeForScan = $adressesCount * $this.checker.waitTimeoutMillis / 1000
         
         $this.Log("Идет сканирование...")
         $this.Log("Будет просканировано $($adressesCount) адресов")
@@ -34,12 +38,10 @@ Class NetworkChecker{
         for($n = $this.minInclusiveByte; $n -clt $this.maxInclusiveByte; $n++){
         
             $adress = "$($this.networkPrefix)$($n)"
-            $ping = ping $adress -n $this.requestsQuantity -w $this.waitTimeoutMillis
-            $isAdressExist = $ping[2].Contains("TTL=")
         
-            if($isAdressExist){
+            if($this.checker.IsExists($adress)){
                 
-                $ipName = (nslookup $adress).Get(3).Replace("Name:    ", "")
+                $ipName = [IpInfo]::GetName($adress)
                 $ipInfo = [IpInfo]::new($ipName, $adress)
                 $this.Log("Найден адрес! $($ipInfo.ToString())")
                 $this.ipList += $ipInfo
@@ -60,3 +62,43 @@ Class NetworkChecker{
     }
 
 }
+
+#Класс, который отправляет ICMP-пакет на удаленный адрес
+Class CheckerICMP{
+
+    CheckerICMP([int] $requestsQuantity, [int] $waitTimeoutMillis){
+        $this.requestsQuantity = $requestsQuantity
+        $this.waitTimeoutMillis = $waitTimeoutMillis
+    }
+
+    #количество запросов на один адрес
+    [int] $requestsQuantity = 1
+    #тайм-аут на проверку одного адреса
+    [int] $waitTimeoutMillis = 500
+
+
+    [bool] IsExists([string] $ip){
+        return (ping $ip -n $this.requestsQuantity -w $this.waitTimeoutMillis)[2].Contains("TTL=")
+    }
+}
+
+#Класс, хранящий в себе сопоставление IP-адреса и его NetBIOS-имени
+Class IpInfo{
+    IpInfo([String ]$name, [String] $address){
+        $this.Name = $name
+        $this.Address = $address
+    }
+
+    [String] $Name
+    [String] $Address
+             
+    [String] ToString(){
+        return "$($this.Address): $($this.Name)"
+    }
+
+    static [String] GetName([string] $ipAddress){
+        return (nslookup $ipAddress).Get(3).Replace("Name:    ", "")
+    }
+}
+
+[Test]::Main();
