@@ -1,12 +1,16 @@
 ﻿chcp 65001
 
-$myAdress = ipconfig
-echo $myAdress | Where-Object { $_.Contains("   IPv4 Address") -and $myAdress.IndexOf($_) -gt $myAdress.IndexOf("Ethernet") }
-
+#количество запросов на один адрес
+$requestsQuantity = 1
+#тайм-аут на проверку одного адреса
 $waitTimeoutMillis = 500
+#префикс сети
+$networkPrefix = "188.32.15."
+#первый байт (исключенный)
 $minExclusiveByte = 0
+#последний байт (исключенный)
 $maxExclusiveByte = 256
-$networkPreffix = "188.32.15."
+#сюда будут сохранены объекты IpInfo
 $ipList = @()
 
 $adressesCount = $maxExclusiveByte - $minExclusiveByte - 2
@@ -18,21 +22,36 @@ echo "Сканирование займет $($maxTimeForScan) сек. макс�
 
 for($n = $minExclusiveByte; $n -clt $maxExclusiveByte; $n++){
 
-    $adress = "$($networkPreffix)$($n)"
-    $ping = ping $adress -n 1 -w $waitTimeoutMillis
+    $adress = "$($networkPrefix)$($n)"
+    $ping = ping $adress -n $requestsQuantity -w $waitTimeoutMillis
     $isAdressExist = $ping[2].Contains("TTL=")
 
     if($isAdressExist){
-        echo "Найден адрес! $($adress)"
-        $ipList += $adress
+        
+        $ipName = (nslookup $adress).Get(3).Replace("Name:    ", "")
+        $ipInfo = [IpInfo]::new($ipName, $adress)
+        echo "Найден адрес! $($ipInfo.ToString())"
+        $ipList += $ipInfo
     }
 }
 
 echo "Сеть просканирована..."
-echo $ipList
 if(!($ipList.Count -eq 0)){
     echo "Найдено $($ipList.Count) адресов"
 }
 else{
     echo "На эхо-запрос никто не откликнулся..."
+}
+
+Class IpInfo{
+    IpInfo([String]$name, [String]$address){
+        $this.Name = $name
+        $this.Address = $address
+    }
+    [String]ToString(){
+        return "$($this.Address): $($this.Name)"
+    }
+
+    [String]$Name
+    [String]$Address
 }
