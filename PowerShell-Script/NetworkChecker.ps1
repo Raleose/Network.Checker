@@ -84,19 +84,19 @@ Class CheckerICMP{
 
 #Класс, хранящий в себе сопоставление IP-адреса и его NetBIOS-имени
 Class IpInfo{
-    IpInfo([String ]$name, [String] $address){
+    IpInfo([string] $name, [string] $address){
         $this.Name = $name
         $this.Address = $address
     }
 
-    [String] $Name
-    [String] $Address
+    [string] $Name
+    [string] $Address
              
-    [String] ToString(){
+    [string] Tostring(){
         return "$($this.Address): $($this.Name)"
     }
 
-    static [String] GetName([string] $ipAddress){
+    static [string] GetName([string] $ipAddress){
         return (nslookup $ipAddress).Get(3).Replace("Name:    ", "")
     }
 }
