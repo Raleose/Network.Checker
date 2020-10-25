@@ -1,6 +1,6 @@
 ﻿Class Test{
     static Main(){
-        $networkChecker = [NetworkChecker]::new("188.32.15.", 1, 255)
+        $networkChecker = [NetworkChecker]::new("1.1.1.", 1, 255)
         $networkChecker.Check()
     }
 }
@@ -28,7 +28,7 @@ Class NetworkChecker{
     [CheckerICMP] $checker
 
     Check(){
-        $adressesCount = $this.maxInclusiveByte - $this.minInclusiveByte - 2
+        $adressesCount = $this.maxInclusiveByte - $this.minInclusiveByte
         $maxTimeForScan = $adressesCount * $this.checker.waitTimeoutMillis / 1000
         
         $this.Log("Идет сканирование...")
@@ -97,7 +97,14 @@ Class IpInfo{
     }
 
     static [string] GetName([string] $ipAddress){
-        return (nslookup $ipAddress).Get(3).Replace("Name:    ", "")
+        $ipName = ""
+        try{
+            $ipName = (nslookup $ipAddress).Get(3).Replace("Name:    ", "")
+        }
+        catch{
+            $ipName = "Unknown..."
+        }
+        return $ipName
     }
 }
 
